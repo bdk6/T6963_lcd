@@ -145,6 +145,38 @@
 // TODO: We can simplify a lot of code by storing the pin #'s in an array
 static int dataPins[8];
 
+//  Store virtual display width
+static uint8_t width;
+
+// Store virtual display height
+static uint8_t height;
+
+//  Keep track of current cursor location
+static uint8_t cursorX;   //  0 to n
+static uint8_t cursorY;   //  0 to m
+
+// Start of text area
+static uint16_t textBaseAddress;
+
+// Current text address
+static uint16_t textPointer;
+
+// Where to start displaying
+static uint16_t textDisplayRow;
+static uint16_t textDisplayCol;
+static uint16_t textDisplayAddress;
+
+// Start of graphic area
+static uint16_t graphicBaseAddress;
+
+//  Track display mode (graphics, text, cursor, blink)
+static uint8_t displayMode;
+
+// Track graphic mode (ROM/RAM CG, OR, XOR, AND)
+static uint8_t graphicMode;
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 ///  @fn ports_init
 ///  @brief  Initializes all gpio ports for use
@@ -166,6 +198,7 @@ static bool ports_init()
   digitalWrite(T6963_RES, LOW);   // Reset while we're here
   pinMode(T6963_FONT, OUTPUT);
   digitalWrite(T6963_FONT, HIGH);  // 6x8 font
+  //digitalWrite(T6963_FONT, LOW);   // 8x8 font
   setDataDirection(OUTPUT);
   
   delay(5);
@@ -269,6 +302,29 @@ static uint8_t getDataBits()
   }
 
   return rtn;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+///  @fn T6963_init
+///  @brief  Initialize display for use
+///  @return  True if initialized, false otherwise
+////////////////////////////////////////////////////////////////////////////////
+static bool T6963_init()
+{
+  width = 40;
+  height = 8;
+  cursorX = 0;
+  cursorY = 0;
+  textBaseAddress = 0;
+  textPointer = 0;
+  textDisplayRow = 0;
+  textDisplayCol = 0;
+  graphicBaseAddress = 6144;  //(my display has 8K ram)
+  displayMode = 0;  // no graphics, no text, no cursor, no blink
+  graphicMode = 0;  // ROM cg, OR mode
+  
+  
 }
 
 
@@ -443,6 +499,7 @@ void T6963_setAddress(uint16_t addr)
   T6963_writeDataByte(addr & 0xff); // low byte
   T6963_writeDataByte( (addr >> 8) & 0xff);  // high byte
   T6963_writeCommandByte(T6963_SET_ADDRESS_POINTER);
+  textPointer = addr;
 }
 
 
@@ -456,6 +513,11 @@ void T6963_setTextHomeAddress(uint16_t addr)
   T6963_writeDataByte(addr & 0xff);
   T6963_writeDataByte( (addr >> 8) & 0xff);
   T6963_writeCommandByte(T6963_SET_TEXT_HOME_ADDRESS);
+  textDisplayAddress = addr;
+  // calc row and col
+  uint16_t offset = addr - textBaseAddress;
+  // start col = offset % width
+  // start row = offset / width;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -800,6 +862,116 @@ void T6963_resetBit(uint8_t b)
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+///  @fn T6963_printChar
+///  @brief  Print a single ASCII character to LCD
+///  @param[in] c Character to print
+////////////////////////////////////////////////////////////////////////////////
+void T6963_printChar(char c)
+{
+  static uint8_t  escaped = 0;
+  // TODO: make this more sophisticated
+  switch(c)
+  {
+    case 8:
+      // bs
+      break;
+    case 9:
+      // tab
+      break;
+    case 10:
+      // lf
+      break;
+    case 12:
+      // ff
+      break;
+    case 13:
+      // cr
+      break;
+    case 27:
+      escaped = 1;
+      break;
+    default:
+      c -= 32;
+      T6963_dataWriteIncrement(c);
+      cursorX++;
+      if(cursorX == width)
+      {
+        cursorX = 0;
+        cursorY++;
+      }
+  }
+  T6963_dataWriteIncrement(c - 32);
+  cursorX++;
+  if(cursorX == width)
+  {
+    cursorX = 0;
+    cursorY++;
+    if(cursorY == height)
+    {
+      // scroll up
+    }
+  }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+///  @fn T6963_printString
+///  @brief  Print a null terminated string to LCD
+///  @param[in] str Pointer to the string to print
+////////////////////////////////////////////////////////////////////////////////
+void T6963_printString(char* str)
+{
+  if(str != NULL)
+  {
+    char ch;
+    while( (ch = *str) != 0)
+    {
+      
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+///  @fn T6963_clear
+///  @brief  Clear all text and data from screen
+////////////////////////////////////////////////////////////////////////////////
+static void T6963_clear()
+{
+  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+///  @fn T6963_textClear
+///  @brief  Clear all text from screen
+////////////////////////////////////////////////////////////////////////////////
+static void T6963_textClear()
+{
+  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+///  @fn T6963_graphicsClear
+///  @brief  Clear all graphics from screen
+////////////////////////////////////////////////////////////////////////////////
+static void T6963_graphicsClear()
+{
+  
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+///  @fn T6963_gotoXY
+///  @brief  Move cursor to column (0-width-1), row (0-height-1) 
+////////////////////////////////////////////////////////////////////////////////
+static void T6963_gotoXY(uint8_t x, uint8_t y)
+{
+  if(x < width && y < height)
+  {
+    
+  }
+}
+
 
 
 
@@ -821,11 +993,15 @@ void setup()
   T6963_setCursor(0,0);
   T6963_setTextHomeAddress(0);
   T6963_setGraphicHomeAddress(2000);
-  T6963_setDisplayMode(1,1,1,1);  // text, graphics, cursor, blink
+  T6963_setDisplayMode(1,0,1,1);  // text, graphics, cursor, blink
  // T6963_setAddress(0);
-  T6963_setTextArea(40);
+  T6963_setTextArea(64);
   T6963_setGraphicArea(40);
   T6963_setOrMode(0);
+  width = 64;
+  cursorX = 0;
+  cursorY = 0;
+  
   delay(100);
   for(int i = 0; i < 800; i++)
   {
@@ -874,6 +1050,17 @@ void setup()
     T6963_writeDataByte( 0x55);
   }
   T6963_setAutoReset();
+//  for(int i = 0; i <20; i++)
+//  {
+//    T6963_setTextHomeAddress(i);
+//    delay(200);
+//  }
+
+  for(int x = 0; x <50; x++)
+  {
+    T6963_setCursor(x,3);
+    delay(200);
+  }
   
  
 

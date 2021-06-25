@@ -14,6 +14,70 @@
 //static int dataPins[8];
 
 ////////////////////////////////////////////////////////////////////////////////
+///  pin mapping
+///  @brief which array word holds which pin number
+////////////////////////////////////////////////////////////////////////////////
+
+enum pinmap
+{
+  PIN_D0    0,
+  PIN_D1    1,
+  PIN_D2    2,
+  PIN_D3    3,
+  PIN_D4    4,
+  PIN_D5    5,
+  PIN_D6    6,
+  PIN_D7    7,
+  PIN_WR    8,
+  PIN_RD    9,
+  PIN_CE   10,
+  PIN_CD   11,
+  PIN_RES  12,
+  PIN_FS   13
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+///  @fn T6963
+///  @brief  Constructor.  Assigns pins, initializes display
+///  @param[in] d0   pin assigned for data 0
+///  @param[in] d1   pin assigned for data 1
+///  @param[in] d2   pin assigned for data 2
+///  @param[in] d3   pin assigned for data 3
+///  @param[in] d4   pin assigned for data 4
+///  @param[in] d5   pin assigned for data 5
+///  @param[in] d6   pin assigned for data 6
+///  @param[in] d7   pin assigned for data 7
+///  @param[in] wr   pin assigned for /write
+///  @param[in] rd   pin assigned for /read
+///  @param[in] ce   pin assigned for /chip enable
+///  @param[in] cd   pin assigned for command /data
+///  @param[in] res  pin assigned for /reset:  0 if not used
+///  @param[in] fs   pin assigned for font select: 0 if not used
+////////////////////////////////////////////////////////////////////////////////
+
+T6963::T6963(int d0, int d1, int d2, int d3, int d4, int d5, int d6, int d7, 
+             int wr, int rd, int ce, int cd, int res = 0, int fs = 0)
+{
+  pins[PIN_D0] = d0;
+  pins[PIN_D1] = d1;
+  pins[PIN_D2] = d2;
+  pins[PIN_D3] = d3;
+  pins[PIN_D4] = d4;
+  pins[PIN_D5] = d5;
+  pins[PIN_D6] = d6;
+  pins[PIN_D7] = d7;
+  pins[PIN_WR] = wr;
+  pins[PIN_RD] = rd;
+  pins[PIN_CE] = ce;
+  pins[PIN_CD] = cd;
+  pins[PIN_RES] = res;
+  pins[PIN_FS] = fs;
+  
+              
+}
+
+////////////////////////////////////////////////////////////////////////////////
 ///  @fn ports_init
 ///  @brief  Initializes all gpio ports for use
 ///  @return  True if initialized, false otherwise
@@ -22,28 +86,29 @@ bool T6963::ports_init()
 {
   bool rtn = false;
   
-  pinMode(T6963_CE, OUTPUT);
-  digitalWrite(T6963_CE, HIGH);
-  pinMode(T6963_WR, OUTPUT);
-  digitalWrite(T6963_WR, HIGH);
-  pinMode(T6963_RD, OUTPUT);
-  digitalWrite(T6963_RD, HIGH);
-  pinMode(T6963_CD, OUTPUT);
+  pinMode(pins[PIN_CE], OUTPUT);
+  digitalWrite(pins[PIN_CE], HIGH);
+  pinMode(pins[PIN_WR], OUTPUT);
+  digitalWrite(pins[PIN_WR], HIGH);
+  pinMode(pins[PIN_RD], OUTPUT);
+  digitalWrite(pins[PIN_CD], HIGH);
+  pinMode(pins[PIN_CD], OUTPUT);
 
-  pinMode(T6963_RES, OUTPUT);
-  digitalWrite(T6963_RES, LOW);   // Reset while we're here
-  pinMode(T6963_FONT, OUTPUT);
-  digitalWrite(T6963_FONT, HIGH);  // 6x8 font
+  if(pins[PIN_RES] != 0)
+  {
+    pinMode(pins[PIN_RES], OUTPUT);
+    digitalWrite(pins[PIN_RES], LOW);   // Reset while we're here
+  }
+  if(pins[PIN_FS] != 0)
+  {
+    pinMode(pins[PIN_FS], OUTPUT);
+    digitalWrite(pins[PIN_FS], HIGH);  // 6x8 font
+  }
+  
   setDataDirection(OUTPUT);
   
-  delay(5);
-  digitalWrite(T6963_RES, HIGH);
-  
-  // set /ce to high
-  // set data pins to input
-  // set rd / wr to high
-  // set c/d to command
-  // set /res to high
+  delay(5);  // Give RESET 5 milliseconds
+  digitalWrite(pins[PIN_RES], HIGH);
 
   rtn = true;
   return rtn;
@@ -57,14 +122,18 @@ bool T6963::ports_init()
 
 void T6963::setDataDirection(int dir)
 {
-  pinMode(T6963_D0, dir);
-  pinMode(T6963_D1, dir);
-  pinMode(T6963_D2, dir);
-  pinMode(T6963_D3, dir);
-  pinMode(T6963_D4, dir);
-  pinMode(T6963_D5, dir);
-  pinMode(T6963_D6, dir);
-  pinMode(T6963_D7, dir);
+  for(int p = PIN_D0; p <= PIN_D7; p++)  // assumes data pins in order in array
+  {
+    pinMode(pins[p], dir);
+  }
+//  pinMode(T6963_D0, dir);
+//  pinMode(T6963_D1, dir);
+//  pinMode(T6963_D2, dir);
+//  pinMode(T6963_D3, dir);
+//  pinMode(T6963_D4, dir);
+//  pinMode(T6963_D5, dir);
+//  pinMode(T6963_D6, dir);
+//  pinMode(T6963_D7, dir);
 }
 
 
@@ -76,21 +145,26 @@ void T6963::setDataDirection(int dir)
 
 void T6963::setDataBits(uint8_t d)
 {
-  digitalWrite(T6963_D0, d & 0x01);
-  d >>= 1;
-  digitalWrite(T6963_D1, d & 0x01);
-  d >>= 1;
-  digitalWrite(T6963_D2, d & 0x01);
-  d >>= 1;
-  digitalWrite(T6963_D3, d & 0x01);
-  d >>= 1;
-  digitalWrite(T6963_D4, d & 0x01);
-  d >>= 1;
-  digitalWrite(T6963_D5, d & 0x01);
-  d >>= 1;
-  digitalWrite(T6963_D6, d & 0x01);
-  d >>= 1;
-  digitalWrite(T6963_D7, d & 0x01);
+  for(int b = 0; b < 8; b++)   // assumes data pins in order (0 to 7) in array
+  {
+    digitalWrite(pins[PIN_D0 + b], d & 0x01)
+    d >>= 1;
+  }
+  //digitalWrite(T6963_D0, d & 0x01);
+  //d >>= 1;
+  //digitalWrite(T6963_D1, d & 0x01);
+  //d >>= 1;
+  //digitalWrite(T6963_D2, d & 0x01);
+  //d >>= 1;
+  //digitalWrite(T6963_D3, d & 0x01);
+  //d >>= 1;
+  //digitalWrite(T6963_D4, d & 0x01);
+  //d >>= 1;
+  //digitalWrite(T6963_D5, d & 0x01);
+  //d >>= 1;
+  //digitalWrite(T6963_D6, d & 0x01);
+  //d >>= 1;
+  //digitalWrite(T6963_D7, d & 0x01);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,81 +176,88 @@ void T6963::setDataBits(uint8_t d)
 uint8_t T6963::getDataBits()
 {
   uint8_t rtn = 0;
+  for(int b = 0; b < 8; b++)  // Assumes data pins in order 0 to 7 in array
+  {
+    rtn <<= 1;
+    if(digitalRead(pins[PIN_D7 - b]) == HIGH)
+    {
+      rtn |= 0x01;
+    }
+  }
   
-  if(digitalRead(T6963_D7) == HIGH)
-  {
-    rtn |= (1 << 7);
-  }
-  if(digitalRead(T6963_D6) == HIGH)
-  {
-    rtn |= (1 << 6);
-  }
-  if(digitalRead(T6963_D5) == HIGH)
-  {
-    rtn |= (1 << 5);
-  }
-  if(digitalRead(T6963_D4) == HIGH)
-  {
-    rtn |= (1 << 4);
-  }
-  if(digitalRead(T6963_D3) == HIGH)
-  {
-    rtn |= (1 << 3);
-  }
-  if(digitalRead(T6963_D2) == HIGH)
-  {
-    rtn |= (1 << 2);
-  }
-  if(digitalRead(T6963_D1) == HIGH)
-  {
-    rtn |= (1 << 1);
-  }
-  if(digitalRead(T6963_D0) == HIGH)
-  {
-    rtn |= (1 << 0);
-  }
+//  if(digitalRead(T6963_D7) == HIGH)
+//  {
+//    rtn |= (1 << 7);
+//  }
+//  if(digitalRead(T6963_D6) == HIGH)
+//  {
+//    rtn |= (1 << 6);
+//  }
+//  if(digitalRead(T6963_D5) == HIGH)
+//  {
+//    rtn |= (1 << 5);
+//  }
+//  if(digitalRead(T6963_D4) == HIGH)
+//  {
+//    rtn |= (1 << 4);
+//  }
+//  if(digitalRead(T6963_D3) == HIGH)
+//  {
+//    rtn |= (1 << 3);
+//  }
+//  if(digitalRead(T6963_D2) == HIGH)
+//  {
+//    rtn |= (1 << 2);
+//  }
+//  if(digitalRead(T6963_D1) == HIGH)
+//  {
+//    rtn |= (1 << 1);
+//  }
+//  if(digitalRead(T6963_D0) == HIGH)
+//  {
+//    rtn |= (1 << 0);
+//  }
 
   return rtn;
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////
-///  @fn T6963_getStatus
+///  @fn getStatus
 ///  @brief  Retrieves status byte from T6963 controller
 ///  @return  T6963 status byte
 ////////////////////////////////////////////////////////////////////////////////
-uint8_t T6963_getStatus()
+uint8_t T6963::getStatus()
 {
   uint8_t rtn = 0;
   setDataDirection(INPUT);
-  digitalWrite(T6963_CD, HIGH);
-  digitalWrite(T6963_RD, LOW);
-  digitalWrite(T6963_CE, LOW);
- // delay(1);
+  digitalWrite(pins[PIN_CD], HIGH);
+  digitalWrite(pins[PIN_RD], LOW);
+  digitalWrite(pins[PIN_CE], LOW);
   rtn = getDataBits();
-  digitalWrite(T6963_CE, HIGH);
-  digitalWrite(T6963_RD, HIGH);
+  digitalWrite(pins[PIN_CE], HIGH);
+  digitalWrite(pins[PIN_RD], HIGH);
   setDataDirection(OUTPUT);
   return rtn;
   
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-///  @fn T6963_getData
+///  @fn getData
 ///  @brief  Gets data byte from T6963 controller 
 ///  @return  Data byte read from controller
 ////////////////////////////////////////////////////////////////////////////////
-uint8_t T6963_getData()
+uint8_t T6963::getData()
 {
   uint8_t rtn = 0;
   setDataDirection(INPUT);
-  digitalWrite(T6963_CD, LOW);
-  digitalWrite(T6963_RD, LOW);
-  digitalWrite(T6963_CE, LOW);
+  digitalWrite(pins[PIN_CD], LOW);
+  digitalWrite(pins[PIN_RD], LOW);
+  digitalWrite(pins[PIN_CE], LOW);
  // delay(1);
   rtn = getDataBits();
-  digitalWrite(T6963_CE, HIGH);
-  digitalWrite(T6963_RD, HIGH);
+  digitalWrite(pins[PIN_CE], HIGH);
+  digitalWrite(pins[PIN_RD], HIGH);
   setDataDirection(OUTPUT);
   return rtn;
   
@@ -186,44 +267,44 @@ uint8_t T6963_getData()
 ///  @fn wait
 ///  @brief   Waits for STATUS0 and STATUS1 to both indicate ready
 ////////////////////////////////////////////////////////////////////////////////
-static void wait()
+void T6963::wait()
 {
-  while(T6963_getStatus() & 0x03 != 3);
+  while(getStatus() & 0x03 != 3);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 ///  @fn waitAuto
 ///  @brief   Waits for STATUS2 or STATUS3 to either indicate ready
 ////////////////////////////////////////////////////////////////////////////////
-static void waitAuto()
+void T6963::waitAuto()
 {
-  while(T6963_getStatus() & 0x0c == 0);  // wait while neither bit set
+  while(getStatus() & 0x0c == 0);  // wait while neither bit set
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 ///  @fn waitAutoRead
 ///  @brief  Waits until auto read capable bit is set
 ////////////////////////////////////////////////////////////////////////////////
-static void waitAutoRead()
+void T6963::waitAutoRead()
 {
-  while(T6963_getStatus() & 0x04 != 4);
+  while(getStatus() & 0x04 != 4);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 ///  @fn waitAutoWrite
 ///  @brief Waits until auto write capable bit is set
 ////////////////////////////////////////////////////////////////////////////////
-static void waitAutoWrite()
+void T6963::waitAutoWrite()
 {
-  while(T6963_getStatus() & 0x08 != 8);
+  while(getStatus() & 0x08 != 8);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-///  @fn T6963_writeDataByte
+///  @fn writeDataByte
 ///  @brief  Send a byte of data to controller
 ///  @param[in]  dat The data byte to send
 ////////////////////////////////////////////////////////////////////////////////
-void T6963_writeDataByte(uint8_t dat)
+void T6963::writeDataByte(uint8_t dat)
 {
   wait();
   setDataDirection(OUTPUT);
@@ -241,7 +322,7 @@ void T6963_writeDataByte(uint8_t dat)
 ///  @brief  Sends a command byte to controller. Send parameters prior to cmd.
 ///  @param[in] cmd The command byte to send
 ////////////////////////////////////////////////////////////////////////////////
-void T6963_writeCommandByte(uint8_t cmd)
+void T6963::writeCommandByte(uint8_t cmd)
 {
   wait();
   setDataDirection(OUTPUT);
@@ -255,13 +336,13 @@ void T6963_writeCommandByte(uint8_t cmd)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-///  @fn T6963_setCursor
+///  @fn setCursor
 ///  @brief  Set cursor location
 ///  @param[in] x The horizontal coordinate (0 to 127)
 ///  @param[in] y The vertical coordinate (0 to 63)
 ///  @return  Zero on success, -1 if out of bounds
 ////////////////////////////////////////////////////////////////////////////////
-int T6963_setCursor(int x, int y)
+int T6963::setCursor(int x, int y)
 {
   int rtn = 0;
   if(x < 0 || x > 127 || y < 0 || y > 63)
@@ -270,21 +351,21 @@ int T6963_setCursor(int x, int y)
   }
   else
   {
-    T6963_writeDataByte(x);
-    T6963_writeDataByte(y);
-    T6963_writeCommandByte(T6963_SET_CURSOR_POINTER);
+    writeDataByte(x);
+    writeDataByte(y);
+    writeCommandByte(T6963_SET_CURSOR_POINTER);
   }
   return rtn;
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////
-///  @fn T6963_setOffsetPointer
+///  @fn setOffsetPointer
 ///  @brief  Sets high five bits of char gen RAM location (2K granularity)
 ///  @param[in]  offs  The offset page (0 to 31)
 ///  @return  Zero on success, -1 if out of bounds
 ////////////////////////////////////////////////////////////////////////////////
-int T6963_setOffsetPointer(uint8_t offs)
+int T6963::setOffsetPointer(uint8_t offs)
 {
   int rtn = 0;
   if(offs > 31)
@@ -293,140 +374,140 @@ int T6963_setOffsetPointer(uint8_t offs)
   }
   else
   {
-    T6963_writeDataByte(offs);
-    T6963_writeDataByte(0);
-    T6963_writeCommandByte(T6963_SET_OFFSET_REGISTER);
+    writeDataByte(offs);
+    writeDataByte(0);
+    writeCommandByte(T6963_SET_OFFSET_REGISTER);
   }
   return rtn;
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////
-///  @fn T6963_setAddress
+///  @fn setAddress
 ///  @brief  Sets controller RAM address for reads and writes
 ///  @param[in] addr  The RAM address to set (0 to 65535) (8191 on DG24064)
 ////////////////////////////////////////////////////////////////////////////////
-void T6963_setAddress(uint16_t addr)
+void T6963::setAddress(uint16_t addr)
 {
-  T6963_writeDataByte(addr & 0xff); // low byte
-  T6963_writeDataByte( (addr >> 8) & 0xff);  // high byte
-  T6963_writeCommandByte(T6963_SET_ADDRESS_POINTER);
+  writeDataByte(addr & 0xff); // low byte
+  writeDataByte( (addr >> 8) & 0xff);  // high byte
+  writeCommandByte(T6963_SET_ADDRESS_POINTER);
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////
-///  @fn T6963_setTextHomeAddress
+///  @fn setTextHomeAddress
 ///  @brief  Sets RAM address used as top left text displayed text character
 ///  @param[in] addr The RAM address to use for top left character (0 - 65535)
 ////////////////////////////////////////////////////////////////////////////////
-void T6963_setTextHomeAddress(uint16_t addr)
+void T6963::setTextHomeAddress(uint16_t addr)
 {
-  T6963_writeDataByte(addr & 0xff);
-  T6963_writeDataByte( (addr >> 8) & 0xff);
-  T6963_writeCommandByte(T6963_SET_TEXT_HOME_ADDRESS);
+  writeDataByte(addr & 0xff);
+  writeDataByte( (addr >> 8) & 0xff);
+  writeCommandByte(T6963_SET_TEXT_HOME_ADDRESS);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-///  @fn T6963_setGraphicHomeAddress
+///  @fn setGraphicHomeAddress
 ///  @brief Sets RAM address of top left graphics byte or text attribute byte
 ///  @param[in] addr The RAM address for graphics or attributes (0 - 65535)
 ////////////////////////////////////////////////////////////////////////////////
-void T6963_setGraphicHomeAddress(uint16_t addr)
+void T6963::setGraphicHomeAddress(uint16_t addr)
 {
-  T6963_writeDataByte(addr & 0xff);
-  T6963_writeDataByte( (addr >> 8) & 0xff);
-  T6963_writeCommandByte(T6963_SET_GRAPHIC_HOME_ADDRESS);
+  writeDataByte(addr & 0xff);
+  writeDataByte( (addr >> 8) & 0xff);
+  _writeCommandByte(T6963_SET_GRAPHIC_HOME_ADDRESS);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-///  @fn T6963_setTextArea
+///  @fn setTextArea
 ///  @brief  Define number of columns for text area of RAM, independent of h/w
 ///  @param[in] cols  Number of text columns
 ////////////////////////////////////////////////////////////////////////////////
-void T6963_setTextArea(uint8_t cols)
+void T6963::setTextArea(uint8_t cols)
 {
-  T6963_writeDataByte(cols);
-  T6963_writeDataByte(0);
-  T6963_writeCommandByte(T6963_SET_TEXT_AREA);
+  writeDataByte(cols);
+  writeDataByte(0);
+  writeCommandByte(T6963_SET_TEXT_AREA);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-///  @fn T6963_setGraphicArea
+///  @fn setGraphicArea
 ///  @brief Define number of (text) columns for graphic area, independent of h/w
 ///  @param[in] cols Number of text columns
 ////////////////////////////////////////////////////////////////////////////////
-void T6963_setGraphicArea(uint8_t cols)
+void T6963::setGraphicArea(uint8_t cols)
 {
-  T6963_writeDataByte(cols);
-  T6963_writeDataByte(0);
-  T6963_writeCommandByte(T6963_SET_GRAPHIC_AREA);
+  writeDataByte(cols);
+  writeDataByte(0);
+  writeCommandByte(T6963_SET_GRAPHIC_AREA);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-///  @fn T6963_setOrMode
+///  @fn setOrMode
 ///  @brief Set mode to OR text and graphic data and choose character generator
 ///  @param[in] CG choose 0 (default) for ROM, non-zero for RAM char gen
 ////////////////////////////////////////////////////////////////////////////////
-void T6963_setOrMode(uint8_t CG = 0)
+void T6963::setOrMode(uint8_t CG = 0)
 {
   if(CG != 0)
   {
     CG = T6963_MODE_RAM_CG;
   }
-  T6963_writeCommandByte(T6963_SET_OR_MODE | CG);
+  writeCommandByte(T6963_SET_OR_MODE | CG);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-///  @fn T6963_setXorMode
+///  @fn setXorMode
 ///  @brief Set mode to XOR text and graphic data, choose character generator
 ///  @param[in] CG choose 0 (default) for ROM, non-zero for RAM char gen
 ////////////////////////////////////////////////////////////////////////////////
-void T6963_setXorMode(uint8_t CG = 0)
+void T6963::setXorMode(uint8_t CG = 0)
 {
   if(CG != 0)
   {
     CG = T6963_MODE_RAM_CG;
   }
-  T6963_writeCommandByte(T6963_SET_EXOR_MODE | CG);
+  writeCommandByte(T6963_SET_EXOR_MODE | CG);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-///  @fn T6963_setAndMode
+///  @fn setAndMode
 ///  @brief Set mode to AND text and graphic data, choose character generator
 ///  @param[in] CG choose 0 (default) for ROM, non-zero for RAM char gen
 ////////////////////////////////////////////////////////////////////////////////
-void T6963_setAndMode(uint8_t CG = 0)
+void T6963::setAndMode(uint8_t CG = 0)
 {
   if(CG != 0)
   {
     CG = T6963_MODE_RAM_CG;
   }
-  T6963_writeCommandByte(T6963_SET_AND_MODE | CG);
+  writeCommandByte(T6963_SET_AND_MODE | CG);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-///  @fn T6963_setTextAttributeMode
+///  @fn setTextAttributeMode
 ///  @brief Set text attribute mode and choose character generator
 ///  @param[in] CG choose 0 (default) for ROM, non-zero for RAM char gen
 ////////////////////////////////////////////////////////////////////////////////
-void T6963_setTextAttributeMode(uint8_t CG = 0)
+void T6963::setTextAttributeMode(uint8_t CG = 0)
 {
   if(CG != 0)
   {
     CG = T6963_MODE_RAM_CG;
   }
-  T6963_writeCommandByte(T6963_SET_TEXT_ATTRIBUTE_MODE | CG);
+  writeCommandByte(T6963_SET_TEXT_ATTRIBUTE_MODE | CG);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-///  @fn T6963_setDisplayMode
+///  @fn setDisplayMode
 ///  @brief  Choose to display or not, text, graphics, cursor, blink
 ///  @param[in] txt Set non-zero to display text.
 ///  @param[in] grph Set non-zero to display graphics.
 ///  @param[in] curs Set non-zero to display the cursor.
 ///  @param[in] blnk Set non-zero to make the cursor blink.
 ////////////////////////////////////////////////////////////////////////////////
-void T6963_setDisplayMode(uint8_t txt = 0, uint8_t grph = 0, uint8_t curs = 0, uint8_t blnk = 0)
+void T6963::setDisplayMode(uint8_t txt = 0, uint8_t grph = 0, uint8_t curs = 0, uint8_t blnk = 0)
 {
   uint8_t cmd = T6963_DISPLAY_MODE;
   if(txt != 0)
@@ -445,15 +526,15 @@ void T6963_setDisplayMode(uint8_t txt = 0, uint8_t grph = 0, uint8_t curs = 0, u
   {
     cmd |= T6963_DISPLAY_BLINK;
   }
-  T6963_writeCommandByte(cmd);
+  writeCommandByte(cmd);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-///  @fn T6963_setCursorSize
+///  @fn setCursorSize
 ///  @brief Select size of cursor from 1 (bottom only) to 8 (full block)
 ///  @param[in] siz Number of lines to use for cursor.
 ////////////////////////////////////////////////////////////////////////////////
-void T6963_setCursorSize(uint8_t siz)
+void T6963::setCursorSize(uint8_t siz)
 {
   if(siz > 8)
   {
@@ -464,7 +545,7 @@ void T6963_setCursorSize(uint8_t siz)
     siz = 1;
   }
   siz--;  // Convert 1 to 8 to 0 to 7
-  T6963_writeCommandByte(T6963_CURSOR_SIZE  | siz );
+  writeCommandByte(T6963_CURSOR_SIZE  | siz );
 }
 
 #define T6963_AUTO_WRITE_SET              0xb0     // Set auto write mode

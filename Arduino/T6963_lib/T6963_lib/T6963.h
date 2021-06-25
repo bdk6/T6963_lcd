@@ -151,6 +151,8 @@
 class T6963
 {
   public:
+    T6963(int d0, int d1, int d2, int d3, int d4, int d5, int d6, int d7, 
+          int wr, int rd, int ce, int cd, int fs, int res);
     void writeDataByte(uint8_t dat)
     void writeCommandByte(uint8_t cmd)
     int TsetCursor(int x, int y)
@@ -181,8 +183,6 @@ class T6963
     void resetBit(uint8_t b)
 
   private:
-    // TODO: We can simplify a lot of code by storing the pin #'s in an array
-    int dataPins[8];
     
     bool ports_init()
     void setDataDirection(int dir)
@@ -194,6 +194,17 @@ class T6963
     void waitAuto()
     void waitAutoRead()
     void waitAutoWrite()
+
+    uint8_t pins[14];  // d0-d7,wr,rd,ce,cd,fs,res
+
+    uint16_t cursorPointer;
+    uint16_t offsetPointer;   
+    uint16_t addressPointer;
+
+    uint16_t textHomeAddress;
+    uint8_t textArea;
+    uint16_t graphicHomeAddres;
+    uint8_t graphicArea;
 
 };
 
